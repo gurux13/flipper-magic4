@@ -54,7 +54,7 @@ bool execute_magic_command_timeout(
     memset(tx_rx->tx_parity, 0, sizeof(tx_rx->tx_parity));
     bool retval = true;
     do {
-        furi_hal_nfc_activate_nfca(1000, NULL);
+        furi_hal_nfc_activate_nfca(timeout, NULL);
         FURI_LOG_D(TAG, "Executing command");
         memcpy(tx_rx->tx_data, tx_data, tx_data_size);
         tx_rx->tx_bits = tx_data_size * 8;

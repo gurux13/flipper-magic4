@@ -16,6 +16,7 @@ App(
         Lib(
             name="magic_gen4",
         ),
+
     ],
     fap_icon_assets="assets",
 )

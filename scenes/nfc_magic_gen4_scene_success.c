@@ -13,10 +13,10 @@ void nfc_magic_gen4_scene_success_on_enter(void* context) {
     Popup* popup = nfc_magic->popup;
     popup_set_icon(popup, 32, 5, &I_DolphinNice_96x59);
     popup_set_header(popup, "Success!", 10, 20, AlignLeft, AlignBottom);
-    popup_set_timeout(popup, 1500);
+    // popup_set_timeout(popup, 1500);
     popup_set_context(popup, nfc_magic);
     popup_set_callback(popup, nfc_magic_gen4_scene_success_popup_callback);
-    popup_enable_timeout(popup);
+    // popup_enable_timeout(popup);
 
     view_dispatcher_switch_to_view(nfc_magic->view_dispatcher, NfcMagicViewPopup);
 }
@@ -30,7 +30,11 @@ bool nfc_magic_gen4_scene_success_on_event(void* context, SceneManagerEvent even
             consumed = scene_manager_search_and_switch_to_previous_scene(
                 nfc_magic->scene_manager, NfcMagicSceneStart);
         }
+    } else if(event.type == SceneManagerEventTypeBack) {
+        consumed = scene_manager_search_and_switch_to_previous_scene(
+            nfc_magic->scene_manager, NfcMagicSceneStart);
     }
+
     return consumed;
 }
 
