@@ -86,7 +86,6 @@ NfcMagic* nfc_magic_gen4_alloc() {
     view_dispatcher_add_view(
         nfc_magic->view_dispatcher, NfcMagicViewWidget, widget_get_view(nfc_magic->widget));
 
-        
     nfc_magic->byte_input = byte_input_alloc();
     view_dispatcher_add_view(
         nfc_magic->view_dispatcher,

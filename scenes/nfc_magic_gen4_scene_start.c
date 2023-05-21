@@ -1,7 +1,8 @@
 #include "../nfc_magic_gen4_i.h"
 enum SubmenuIndex {
     SubmenuIndexPassword,
-    SubmenuIndexCheck,
+    SubmenuIndexIdentify,
+    SubmenuIndexSetAts,
     SubmenuIndexWriteGen1A,
     SubmenuIndexWipe,
 };
@@ -25,8 +26,14 @@ void nfc_magic_gen4_scene_start_on_enter(void* context) {
         nfc_magic);
     submenu_add_item(
         submenu,
-        "Check Magic Tag",
-        SubmenuIndexCheck,
+        "Identify Magic Tag",
+        SubmenuIndexIdentify,
+        nfc_magic_gen4_scene_start_submenu_callback,
+        nfc_magic);
+    submenu_add_item(
+        submenu,
+        "Set ATS",
+        SubmenuIndexSetAts,
         nfc_magic_gen4_scene_start_submenu_callback,
         nfc_magic);
     submenu_add_item(
@@ -48,28 +55,27 @@ bool nfc_magic_gen4_scene_start_on_event(void* context, SceneManagerEvent event)
     bool consumed = false;
 
     if(event.type == SceneManagerEventTypeCustom) {
+        scene_manager_set_scene_state(
+                nfc_magic->scene_manager, NfcMagicSceneStart, event.event);
         if (event.event == SubmenuIndexPassword) {
-            scene_manager_set_scene_state(
-                nfc_magic->scene_manager, NfcMagicSceneStart, SubmenuIndexPassword);
             scene_manager_next_scene(nfc_magic->scene_manager, NfcMagicScenePassword);
             consumed = true;
         }
-        if(event.event == SubmenuIndexCheck) {
-            scene_manager_set_scene_state(
-                nfc_magic->scene_manager, NfcMagicSceneStart, SubmenuIndexCheck);
-            scene_manager_next_scene(nfc_magic->scene_manager, NfcMagicSceneCheck);
+        if(event.event == SubmenuIndexIdentify) {
+            scene_manager_next_scene(nfc_magic->scene_manager, NfcMagicSceneIdentify);
             consumed = true;
-        } else if(event.event == SubmenuIndexWriteGen1A) {
+        } 
+        else if(event.event == SubmenuIndexSetAts) {
+            scene_manager_next_scene(nfc_magic->scene_manager, NfcMagicSceneSetAts);
+            consumed = true;
+        }
+        else if(event.event == SubmenuIndexWriteGen1A) {
             // Explicitly save state in each branch so that the
             // correct option is reselected if the user cancels
             // loading a file.
-            scene_manager_set_scene_state(
-                nfc_magic->scene_manager, NfcMagicSceneStart, SubmenuIndexWriteGen1A);
             scene_manager_next_scene(nfc_magic->scene_manager, NfcMagicSceneFileSelect);
             consumed = true;
         } else if(event.event == SubmenuIndexWipe) {
-            scene_manager_set_scene_state(
-                nfc_magic->scene_manager, NfcMagicSceneStart, SubmenuIndexWipe);
             scene_manager_next_scene(nfc_magic->scene_manager, NfcMagicSceneWipe);
             consumed = true;
         }

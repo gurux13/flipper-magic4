@@ -6,7 +6,6 @@
 
 #define MAGIC_BUFFER_SIZE 32
 
-
 #define MAGIC_CMD_WUPA (0x40)
 #define MAGIC_CMD_WIPE (0x41)
 #define MAGIC_CMD_READ (0x43)
@@ -16,6 +15,91 @@
 #define MAGIC_MIFARE_WRITE_CMD (0xA0)
 
 #define MAGIC_ACK (0x0A)
+
+#define DEFAULT_TIMEOUT_MS 50
+
+#define min(x, y) ((x) < (y) ? (x) : (y))
+
+bool execute_magic_command(
+    const byte* password,
+    byte command,
+    const byte* payload,
+    int payload_size,
+    byte* buffer,
+    int buffer_size) {
+    return execute_magic_command_timeout(
+        password, command, payload, payload_size, buffer, buffer_size, DEFAULT_TIMEOUT_MS);
+}
+
+bool execute_magic_command_timeout(
+    const byte* password,
+    byte command,
+    const byte* payload,
+    int payload_size,
+    byte* buffer,
+    int buffer_size,
+    int timeout) {
+    int tx_data_size = 1 + 4 + 1 + payload_size;
+    uint8_t tx_data[1 + 4 + 1 + payload_size];
+    memset(tx_data, 0, tx_data_size);
+    tx_data[0] = 0xCF;
+    memcpy(tx_data + 1, password, 4);
+    tx_data[5] = command;
+    if(payload_size > 0) {
+        memcpy(tx_data + 6, payload, payload_size);
+    }
+    FuriHalNfcTxRxContext tx_rx_ = {};
+    FuriHalNfcTxRxContext* tx_rx = &tx_rx_;
+    memset(tx_rx->tx_data, 0, sizeof(tx_rx->tx_data));
+    memset(tx_rx->tx_parity, 0, sizeof(tx_rx->tx_parity));
+    bool retval = true;
+    do {
+        furi_hal_nfc_activate_nfca(1000, NULL);
+        FURI_LOG_D(TAG, "Executing command");
+        memcpy(tx_rx->tx_data, tx_data, tx_data_size);
+        tx_rx->tx_bits = tx_data_size * 8;
+        tx_rx->tx_rx_type = FuriHalNfcTxRxTypeDefault;
+        for(int i = 0; i < tx_rx->tx_bits / 8; ++i) {
+            FURI_LOG_E("MAGIC", "Sending byte %02x", tx_rx->tx_data[i]);
+        }
+
+        if(!furi_hal_nfc_tx_rx(tx_rx, timeout)) {
+            FURI_LOG_E(TAG, "Failed reading version");
+            furi_hal_nfc_sleep();
+            retval = false;
+            break;
+        }
+        for(int i = 0; i < tx_rx->rx_bits / 8; ++i) {
+            FURI_LOG_E("MAGIC", "Got byte %02x", tx_rx->rx_data[i]);
+        }
+        int to_copy = min(tx_rx->rx_bits / 8, buffer_size);
+        if(to_copy > 0) {
+            memcpy(buffer, tx_rx->rx_data, to_copy);
+        }
+    } while(false);
+
+/*    do {
+        memset(tx_rx->tx_data, 0, sizeof(tx_rx->tx_data));
+        memset(tx_rx->tx_parity, 0, sizeof(tx_rx->tx_parity));
+        FURI_LOG_W("MAGIC", "Sending RATS");
+        tx_rx->tx_data[0] = 0xE0;
+        tx_rx->tx_data[1] = 0;
+        tx_rx->tx_bits = 16;
+        if(!furi_hal_nfc_tx_rx(tx_rx, timeout)) {
+            FURI_LOG_E(TAG, "Failed doing RATS");
+            furi_hal_nfc_sleep();
+            retval = false;
+            break;
+        }
+        for(int i = 0; i < tx_rx->rx_bits / 8; ++i) {
+            FURI_LOG_E("MAGIC", "Got byte %02x", tx_rx->rx_data[i]);
+        }
+    } while (false);*/
+
+
+    return retval;
+}
+
 bool magic_wupa() {
     bool magic_activated = false;
     uint8_t tx_data[MAGIC_BUFFER_SIZE] = {};
@@ -208,15 +292,14 @@ bool magic_wipe() {
     return wipe_success;
 }
 
-
 void magic_test() {
     // uint8_t tx_data[] = {0xCF, 0x08, 0x16, 0x32, 0x64, 0xCF, 0x01};
     //uint8_t tx_data[] = {0xCF, 0x00, 0x00, 0x00, 0x00, 0xCD, 0x00, 0x04, 0x68, 0x7D, 0xEA, 0x8C, 0x70, 0x80, 0x08, 0x44, 0x00, 0x01, 0x01, 0x11, 0x00, 0x34, 0x21};
     //uint8_t tx_data[] = {0xCF, 0x08, 0x16, 0x32, 0x64, 0xFE, 0x42, 0x77, 0x13, 0x18};
     uint8_t tx_data[] = {0xCF, 0x42, 0x77, 0x13, 0x18, 0x35, 0x44, 0x00, 0x08};
     FuriHalNfcTxRxContext tx_rx_ = {};
-    
-    FuriHalNfcTxRxContext * tx_rx = &tx_rx_;
+
+    FuriHalNfcTxRxContext* tx_rx = &tx_rx_;
     FuriHalNfcReturn ret = 0;
     memset(tx_rx->tx_data, 0, sizeof(tx_rx->tx_data));
     memset(tx_rx->tx_parity, 0, sizeof(tx_rx->tx_parity));
@@ -233,20 +316,18 @@ void magic_test() {
             furi_hal_nfc_sleep();
             break;
         }
-        for (int i = 0; i < tx_rx->rx_bits / 8; ++i) {
+        for(int i = 0; i < tx_rx->rx_bits / 8; ++i) {
             FURI_LOG_E("MAGIC", "Got byte %02x", tx_rx->rx_data[i]);
         }
         FURI_LOG_E(TAG, "Got version!");
-    }
-    while (false);
+    } while(false);
     return;
     // uint8_t tx_data[] = {0x60};
     uint8_t rx_data[MAGIC_BUFFER_SIZE] = {};
     uint16_t rx_len = 0;
-    
 
     do {
-                furi_hal_nfc_exit_sleep();
+        furi_hal_nfc_exit_sleep();
         furi_hal_nfc_ll_txrx_on();
         furi_hal_nfc_ll_poll();
         ret = furi_hal_nfc_ll_set_mode(
@@ -257,7 +338,7 @@ void magic_test() {
         furi_hal_nfc_ll_set_fdt_poll(FURI_HAL_NFC_LL_FDT_POLL_NFCA_POLLER);
         furi_hal_nfc_ll_set_error_handling(FuriHalNfcErrorHandlingNfc);
         furi_hal_nfc_ll_set_guard_time(FURI_HAL_NFC_LL_GT_NFCA);
-        
+
         ret = furi_hal_nfc_ll_txrx_bits(
             tx_data,
             sizeof(tx_data) * 8,
@@ -276,7 +357,6 @@ void magic_test() {
         }
 
     } while(false);
-
 }
 
 void magic_deactivate() {

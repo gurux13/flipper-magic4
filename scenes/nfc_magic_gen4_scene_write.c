@@ -43,6 +43,8 @@ void nfc_magic_gen4_scene_write_on_enter(void* context) {
         nfc_magic->worker,
         NfcMagicWorkerStateWrite,
         &nfc_magic->nfc_dev->dev_data,
+        nfc_magic->persisted_state->password,
+        NULL,
         nfc_magic_gen4_write_worker_callback,
         nfc_magic);
     nfc_magic_gen4_blink_start(nfc_magic);
